@@ -17,11 +17,13 @@ void main() async {
       ),
     ],
   );
+
   await AwesomeNotifications().isNotificationAllowed().then((isAllowed) {
     if (!isAllowed) {
       AwesomeNotifications().requestPermissionToSendNotifications();
     }
   });
+
   runApp(const PostureApp());
 }
 

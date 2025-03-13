@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'notification_service.dart';
 
 class PosturePage extends StatefulWidget {
@@ -13,6 +15,7 @@ class _PosturePageState extends State<PosturePage> {
   int _goodPostureMinutes = 45;
   int _badPostureMinutes = 15;
   int _currentStreak = 10;
+  List<BluetoothDevice> devices = [];
 
   void _simulateBadPosture() async {
     setState(() {
@@ -52,6 +55,73 @@ class _PosturePageState extends State<PosturePage> {
     );
   }
 
+  Future<void> requestPermissions() async {
+    if (await Permission.bluetoothScan.request().isGranted &&
+        await Permission.bluetoothConnect.request().isGranted &&
+        await Permission.location.request().isGranted) {
+      startScan();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Bluetooth permissions are required!")),
+      );
+    }
+  }
+
+  void startScan() async {
+    devices.clear();
+    setState(() {}); // Ensure UI updates
+
+    FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
+
+    FlutterBluePlus.scanResults.listen((results) {
+      for (ScanResult result in results) {
+        if (!devices.any((d) => d.id == result.device.id)) {
+          setState(() {
+            devices.add(result.device);
+          });
+        }
+      }
+    });
+
+    await Future.delayed(const Duration(seconds: 4));
+    FlutterBluePlus.stopScan();
+  }
+
+  void _showDeviceListDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: Text('Available Bluetooth Devices'),
+          content: devices.isEmpty
+              ? Text('No devices found.')
+              : SingleChildScrollView(
+                  child: Column(
+                    children: devices.map((device) {
+                      return ListTile(
+                        title: Text(device.name.isNotEmpty
+                            ? device.name
+                            : "Unknown Device"),
+                        subtitle: Text(device.id.toString()),
+                        onTap: () {
+                          // You can add your logic to connect to the selected device here.
+                          Navigator.of(dialogContext).pop();
+                        },
+                      );
+                    }).toList(),
+                  ),
+                ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
@@ -65,13 +135,33 @@ class _PosturePageState extends State<PosturePage> {
       body: SafeArea(
         child: Column(
           children: [
+            ElevatedButton(
+              onPressed: () async {
+                await requestPermissions();
+                _showDeviceListDialog();
+              },
+              child: const Text("Scan for Devices"),
+            ),
+            // Expanded(
+            //   child: ListView(
+            //     children: devices.map((device) {
+            //       return ListTile(
+            //         title: Text(device.name.isNotEmpty
+            //             ? device.name
+            //             : "Unknown Device"),
+            //         subtitle: Text(device.id.toString()),
+            //       );
+            //     }).toList(),
+            //   ),
+            // ),
             // Posture Status Card
             Expanded(
               flex: 3,
               child: Container(
                 margin: EdgeInsets.all(screenSize.width * 0.04),
                 decoration: BoxDecoration(
-                  color: _goodPosture ? Colors.green.shade50 : Colors.red.shade50,
+                  color:
+                      _goodPosture ? Colors.green.shade50 : Colors.red.shade50,
                   borderRadius: BorderRadius.circular(16.0),
                   boxShadow: [
                     BoxShadow(
@@ -101,7 +191,8 @@ class _PosturePageState extends State<PosturePage> {
                     ),
                     SizedBox(height: screenSize.height * 0.02),
                     Padding(
-                      padding: EdgeInsets.symmetric(horizontal: screenSize.width * 0.06),
+                      padding: EdgeInsets.symmetric(
+                          horizontal: screenSize.width * 0.06),
                       child: Text(
                         _goodPosture
                             ? 'Great job maintaining proper alignment!'
@@ -109,7 +200,9 @@ class _PosturePageState extends State<PosturePage> {
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: screenSize.width * 0.04,
-                          color: _goodPosture ? Colors.green.shade800 : Colors.red.shade800,
+                          color: _goodPosture
+                              ? Colors.green.shade800
+                              : Colors.red.shade800,
                         ),
                       ),
                     ),
@@ -137,9 +230,12 @@ class _PosturePageState extends State<PosturePage> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _buildStatItem('Good Posture', '$_goodPostureMinutes min', Colors.green),
-                  _buildStatItem('Bad Posture', '$_badPostureMinutes min', Colors.red),
-                  _buildStatItem('Current Streak', '$_currentStreak min', Colors.blue),
+                  _buildStatItem(
+                      'Good Posture', '$_goodPostureMinutes min', Colors.green),
+                  _buildStatItem(
+                      'Bad Posture', '$_badPostureMinutes min', Colors.red),
+                  _buildStatItem(
+                      'Current Streak', '$_currentStreak min', Colors.blue),
                 ],
               ),
             ),
@@ -154,16 +250,20 @@ class _PosturePageState extends State<PosturePage> {
                     child: ElevatedButton(
                       onPressed: () {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Recalibrating posture detection...')),
+                          const SnackBar(
+                              content:
+                                  Text('Recalibrating posture detection...')),
                         );
                       },
                       style: ElevatedButton.styleFrom(
-                        padding: EdgeInsets.symmetric(vertical: screenSize.height * 0.02),
+                        padding: EdgeInsets.symmetric(
+                            vertical: screenSize.height * 0.02),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(30.0),
                         ),
                       ),
-                      child: Text('Recalibrate', style: TextStyle(fontSize: screenSize.width * 0.04)),
+                      child: Text('Recalibrate',
+                          style: TextStyle(fontSize: screenSize.width * 0.04)),
                     ),
                   ),
                   SizedBox(height: screenSize.height * 0.01),
@@ -173,12 +273,14 @@ class _PosturePageState extends State<PosturePage> {
                       onPressed: _simulateBadPosture,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.redAccent,
-                        padding: EdgeInsets.symmetric(vertical: screenSize.height * 0.02),
+                        padding: EdgeInsets.symmetric(
+                            vertical: screenSize.height * 0.02),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(30.0),
                         ),
                       ),
-                      child: Text('Simulate Bad Posture', style: TextStyle(fontSize: screenSize.width * 0.04)),
+                      child: Text('Simulate Bad Posture',
+                          style: TextStyle(fontSize: screenSize.width * 0.04)),
                     ),
                   ),
                   SizedBox(height: screenSize.height * 0.01),
@@ -188,13 +290,15 @@ class _PosturePageState extends State<PosturePage> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.black,
                         foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(vertical: screenSize.height * 0.02),
+                        padding: EdgeInsets.symmetric(
+                            vertical: screenSize.height * 0.02),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(30.0),
                         ),
                       ),
                       onPressed: _showGoodPostureTips,
-                      child: Text('Good Posture Tips', style: TextStyle(fontSize: screenSize.width * 0.04)),
+                      child: Text('Good Posture Tips',
+                          style: TextStyle(fontSize: screenSize.width * 0.04)),
                     ),
                   ),
                 ],
