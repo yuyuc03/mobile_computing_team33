@@ -1,0 +1,232 @@
+import 'package:flutter/material.dart';
+import 'notification_service.dart';
+
+class PosturePage extends StatefulWidget {
+  const PosturePage({Key? key}) : super(key: key);
+
+  @override
+  _PosturePageState createState() => _PosturePageState();
+}
+
+class _PosturePageState extends State<PosturePage> {
+  bool _goodPosture = true;
+  int _goodPostureMinutes = 45;
+  int _badPostureMinutes = 15;
+  int _currentStreak = 10;
+
+  void _simulateBadPosture() async {
+    setState(() {
+      _goodPosture = false;
+      _badPostureMinutes++;
+      _currentStreak = 0;
+    });
+    await sendNotification();
+    vibrate();
+  }
+
+  void _showGoodPostureTips() {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: Text('How to Maintain Good Posture'),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: [
+                Text("1. Sit upright with shoulders back."),
+                Text("2. Keep your feet flat on the floor."),
+                Text("3. Your ears should align with your shoulders."),
+                Text("4. Avoid slouching forward for long periods."),
+                SizedBox(height: 10),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final isSmallScreen = screenSize.width < 600;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Posture Monitor'),
+        centerTitle: true,
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Posture Status Card
+            Expanded(
+              flex: 3,
+              child: Container(
+                margin: EdgeInsets.all(screenSize.width * 0.04),
+                decoration: BoxDecoration(
+                  color: _goodPosture ? Colors.green.shade50 : Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(16.0),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.3),
+                      spreadRadius: 2,
+                      blurRadius: 5,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      _goodPosture ? Icons.check_circle : Icons.warning,
+                      size: screenSize.width * 0.2,
+                      color: _goodPosture ? Colors.green : Colors.red,
+                    ),
+                    SizedBox(height: screenSize.height * 0.02),
+                    Text(
+                      _goodPosture ? 'Good Posture!' : 'Bad Posture!',
+                      style: TextStyle(
+                        fontSize: screenSize.width * 0.06,
+                        fontWeight: FontWeight.bold,
+                        color: _goodPosture ? Colors.green : Colors.red,
+                      ),
+                    ),
+                    SizedBox(height: screenSize.height * 0.02),
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: screenSize.width * 0.06),
+                      child: Text(
+                        _goodPosture
+                            ? 'Great job maintaining proper alignment!'
+                            : 'Your shoulders are slouching forward. Try sitting up straight and pulling your shoulders back.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: screenSize.width * 0.04,
+                          color: _goodPosture ? Colors.green.shade800 : Colors.red.shade800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // Statistics Section
+            Container(
+              margin: EdgeInsets.all(screenSize.width * 0.04),
+              padding: EdgeInsets.all(screenSize.width * 0.04),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16.0),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.2),
+                    spreadRadius: 1,
+                    blurRadius: 3,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildStatItem('Good Posture', '$_goodPostureMinutes min', Colors.green),
+                  _buildStatItem('Bad Posture', '$_badPostureMinutes min', Colors.red),
+                  _buildStatItem('Current Streak', '$_currentStreak min', Colors.blue),
+                ],
+              ),
+            ),
+
+            // Action Buttons
+            Padding(
+              padding: EdgeInsets.all(screenSize.width * 0.04),
+              child: Column(
+                children: [
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Recalibrating posture detection...')),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        padding: EdgeInsets.symmetric(vertical: screenSize.height * 0.02),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30.0),
+                        ),
+                      ),
+                      child: Text('Recalibrate', style: TextStyle(fontSize: screenSize.width * 0.04)),
+                    ),
+                  ),
+                  SizedBox(height: screenSize.height * 0.01),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _simulateBadPosture,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.redAccent,
+                        padding: EdgeInsets.symmetric(vertical: screenSize.height * 0.02),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30.0),
+                        ),
+                      ),
+                      child: Text('Simulate Bad Posture', style: TextStyle(fontSize: screenSize.width * 0.04)),
+                    ),
+                  ),
+                  SizedBox(height: screenSize.height * 0.01),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.black,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(vertical: screenSize.height * 0.02),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30.0),
+                        ),
+                      ),
+                      onPressed: _showGoodPostureTips,
+                      child: Text('Good Posture Tips', style: TextStyle(fontSize: screenSize.width * 0.04)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatItem(String title, String value, Color color) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.grey.shade700,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+      ],
+    );
+  }
+}
