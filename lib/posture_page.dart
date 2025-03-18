@@ -16,6 +16,74 @@ class _PosturePageState extends State<PosturePage> {
   int _badPostureMinutes = 15;
   int _currentStreak = 10;
   List<BluetoothDevice> devices = [];
+  BluetoothDevice? connectedDevice;
+  BluetoothCharacteristic? postureCharacteristic;
+
+  Future<void> scanAndConnect() async {
+    // Start scanning
+    FlutterBluePlus.startScan(timeout: const Duration(seconds: 5));
+
+    // Listen to scan results
+    FlutterBluePlus.scanResults.listen((results) async {
+      for (ScanResult r in results) {
+        if (r.device.name == "PostureSensor") {
+          // Match Arduino BLE name
+          print("Found device: ${r.device.name}");
+
+          await FlutterBluePlus.stopScan(); // Stop scanning
+          connectedDevice = r.device;
+
+          // Connect to the device
+          await connectedDevice!.connect();
+
+          // Discover services
+          List<BluetoothService> services =
+              await connectedDevice!.discoverServices();
+
+          for (BluetoothService service in services) {
+            for (BluetoothCharacteristic characteristic
+                in service.characteristics) {
+              if (characteristic.uuid
+                  .toString()
+                  .toUpperCase()
+                  .contains("2A37")) {
+                // Match characteristic UUID
+                postureCharacteristic = characteristic;
+                listenToPosture(); // Start listening for posture updates
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  void listenToPosture() {
+    if (postureCharacteristic != null) {
+      postureCharacteristic!.setNotifyValue(true);
+      postureCharacteristic!.value.listen((value) {
+        if (value.length >= 2) {
+          // Assuming the first byte is good probability and the second byte is bad probability
+          int goodProbability = value[0];
+          int badProbability = value[1];
+
+          String posture = goodProbability > badProbability ? "good" : "bad";
+          print("Posture: $posture"); // Output either "good" or "bad"
+
+          // Trigger _simulateBadPosture if posture is bad
+          if (posture == "bad") {
+            _simulateBadPosture();
+          } else {
+            setState(() {
+              _goodPosture = true;
+            });
+          }
+        } else {
+          print("Invalid data received: $value");
+        }
+      });
+    }
+  }
 
   void _simulateBadPosture() async {
     setState(() {
