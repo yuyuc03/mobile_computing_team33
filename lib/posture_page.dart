@@ -218,7 +218,8 @@ class _PosturePageState extends State<PosturePage> {
       );
 
       postureCharacteristic = targetService.characteristics.firstWhere(
-        (c) => c.uuid.toString().toLowerCase() == characteristicUuid.toLowerCase(),
+        (c) =>
+            c.uuid.toString().toLowerCase() == characteristicUuid.toLowerCase(),
       );
 
       // Enable notifications
@@ -231,7 +232,7 @@ class _PosturePageState extends State<PosturePage> {
           // Convert the received bytes to string
           String posture = String.fromCharCodes(value);
           print("Received posture: $posture");
-          
+
           setState(() {
             _hasReceivedData = true;
             bool wasPreviouslyGood = _goodPosture;
